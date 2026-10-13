@@ -8,7 +8,7 @@ import WalletManager from '@tetherto/wdk-wallet'
 
 import { BridgeProtocol, LendingProtocol, SdaProtocol, SwapProtocol, SwidgeProtocol } from '@tetherto/wdk-wallet/protocols'
 
-import WDK, { DEFAULT_POLICY_EXCLUSIONS, DENIAL_CODES, PolicyConfigurationError, PolicyViolationError } from '../index.js'
+import WDK, { DEFAULT_POLICY_EXCLUSIONS, DENIAL_CODES, PolicyConfigurationError, PolicyViolationError } from './legacy-wdk.js'
 
 const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 

@@ -1,0 +1,61 @@
+{
+  "name": "@tetherto/wdk-policies",
+  "version": "1.0.0-beta.1",
+  "description": "Transaction policies for WDK: an opt-in guardrail that governs the accounts a WDK instance hands out. It runs in the caller's process and is not a security boundary.",
+  "homepage": "https://docs.wdk.tether.io/sdk/core-module/guides/transaction-policies",
+  "keywords": [
+    "wdk",
+    "policies"
+  ],
+  "author": "Tether",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tetherto/wdk-policies.git"
+  },
+  "main": "index.js",
+  "type": "module",
+  "types": "./types",
+  "scripts": {
+    "build:types": "tsc",
+    "lint": "standard",
+    "lint:fix": "standard --fix",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage"
+  },
+  "dependencies": {
+    "bare-node-runtime": "^1.4.0",
+    "zod": "4.4.3"
+  },
+  "peerDependencies": {
+    "@tetherto/wdk": "^1.0.0-beta.21"
+  },
+  "devDependencies": {
+    "@tetherto/wdk": "^1.0.0-beta.21",
+    "@tetherto/wdk-wallet": "^1.0.0-beta.15",
+    "cross-env": "7.0.3",
+    "jest": "30.4.2",
+    "standard": "17.1.2",
+    "typescript": "5.8.3"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "bare": "./bare.js",
+      "default": "./index.js"
+    },
+    "./package": {
+      "default": "./package.json"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "standard": {
+    "ignore": [
+      "bare.js",
+      "tests/**/*.js"
+    ]
+  }
+}
