@@ -16,11 +16,11 @@
 import PolicyEngine from './policy-engine.js'
 
 /** @typedef {import('@tetherto/wdk').default} WDK */
-/** @typedef {import('./policy-engine.js').Policy} Policy */
-/** @typedef {import('./policy-engine.js').RegisterPolicyOptions} RegisterPolicyOptions */
+/** @typedef {import('./index.js').Policy} Policy */
+/** @typedef {import('./index.js').RegisterPolicyOptions} RegisterPolicyOptions */
 
 /**
- * Settings for the plugin, the same ones the engine took when it lived in core.
+ * Settings for the plugin.
  *
  * @typedef {Object} WdkPoliciesOptions
  * @property {number} [maxConditionTimeoutMs] - Upper bound, in milliseconds, on the per-condition timeout any single
@@ -41,8 +41,9 @@ export default class WdkPolicies {
    * Creates the plugin.
    *
    * @param {WdkPoliciesOptions} [options] - The engine settings.
-   * @throws {PolicyConfigurationError} If `options` is not a plain object, `maxConditionTimeoutMs` is not a finite
-   *   positive number, or `policyExclusions` is not an array of non-empty strings.
+   * @throws {PolicyConfigurationError} If `options` is not a plain object.
+   * @throws {PolicyConfigurationError} If `maxConditionTimeoutMs` is not a finite positive number.
+   * @throws {PolicyConfigurationError} If `policyExclusions` is not an array of non-empty strings.
    */
   constructor (options) {
     /** @private */
@@ -59,7 +60,7 @@ export default class WdkPolicies {
    * Governs every account retrieved from the given wallets of a WDK instance. Attaching the same wallet twice
    * installs one middleware. Register the plugin after any middleware whose effects it should govern.
    *
-   * @param {WDK} wdk - The WDK instance.
+   * @param {WDK} wdk - The WDK instance whose accounts the plugin governs.
    * @param {...string} blockchains - The wallet identifiers, as passed to `registerWallet`.
    * @returns {WdkPolicies} The plugin, for chaining.
    */
@@ -82,13 +83,14 @@ export default class WdkPolicies {
   }
 
   /**
-   * Registers one or more policies, exactly as `wdk.registerPolicy` did when the engine was part of core.
+   * Registers one or more policies. Calls stack; if a policy with the same id is registered twice into the same
+   * binding, the second call replaces the first.
    *
-   * @param {Policy | Policy[]} policies - A single policy or an array of policies.
+   * @param {Policy | Policy[]} policies - The policies to register.
    * @param {RegisterPolicyOptions} [options] - Settings applied to the policies this call registers.
    * @returns {WdkPolicies} The plugin, for chaining.
-   * @throws {PolicyConfigurationError} If any policy or option fails validation, or a policy binds to a wallet
-   *   that was never attached.
+   * @throws {PolicyConfigurationError} If any policy or option fails validation.
+   * @throws {PolicyConfigurationError} If a policy binds to a wallet that was never attached.
    */
   register (policies, options) {
     this._engine.register(policies, options, { knownWallets: this._wallets })

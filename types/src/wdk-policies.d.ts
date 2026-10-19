@@ -10,8 +10,9 @@ export default class WdkPolicies {
      * Creates the plugin.
      *
      * @param {WdkPoliciesOptions} [options] - The engine settings.
-     * @throws {PolicyConfigurationError} If `options` is not a plain object, `maxConditionTimeoutMs` is not a finite
-     *   positive number, or `policyExclusions` is not an array of non-empty strings.
+     * @throws {PolicyConfigurationError} If `options` is not a plain object.
+     * @throws {PolicyConfigurationError} If `maxConditionTimeoutMs` is not a finite positive number.
+     * @throws {PolicyConfigurationError} If `policyExclusions` is not an array of non-empty strings.
      */
     constructor(options?: WdkPoliciesOptions);
     /** @private */
@@ -24,19 +25,20 @@ export default class WdkPolicies {
      * Governs every account retrieved from the given wallets of a WDK instance. Attaching the same wallet twice
      * installs one middleware. Register the plugin after any middleware whose effects it should govern.
      *
-     * @param {WDK} wdk - The WDK instance.
+     * @param {WDK} wdk - The WDK instance whose accounts the plugin governs.
      * @param {...string} blockchains - The wallet identifiers, as passed to `registerWallet`.
      * @returns {WdkPolicies} The plugin, for chaining.
      */
     attach(wdk: WDK, ...blockchains: string[]): WdkPolicies;
     /**
-     * Registers one or more policies, exactly as `wdk.registerPolicy` did when the engine was part of core.
+     * Registers one or more policies. Calls stack; if a policy with the same id is registered twice into the same
+     * binding, the second call replaces the first.
      *
-     * @param {Policy | Policy[]} policies - A single policy or an array of policies.
+     * @param {Policy | Policy[]} policies - The policies to register.
      * @param {RegisterPolicyOptions} [options] - Settings applied to the policies this call registers.
      * @returns {WdkPolicies} The plugin, for chaining.
-     * @throws {PolicyConfigurationError} If any policy or option fails validation, or a policy binds to a wallet
-     *   that was never attached.
+     * @throws {PolicyConfigurationError} If any policy or option fails validation.
+     * @throws {PolicyConfigurationError} If a policy binds to a wallet that was never attached.
      */
     register(policies: Policy | Policy[], options?: RegisterPolicyOptions): WdkPolicies;
     /**
@@ -53,10 +55,10 @@ export default class WdkPolicies {
     dispose(blockchains?: string[]): void;
 }
 export type WDK = import("@tetherto/wdk").default;
-export type Policy = import("./policy-engine.js").Policy;
-export type RegisterPolicyOptions = import("./policy-engine.js").RegisterPolicyOptions;
+export type Policy = import("./index.js").Policy;
+export type RegisterPolicyOptions = import("./index.js").RegisterPolicyOptions;
 /**
- * Settings for the plugin, the same ones the engine took when it lived in core.
+ * Settings for the plugin.
  */
 export type WdkPoliciesOptions = {
     /**
