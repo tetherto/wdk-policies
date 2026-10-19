@@ -57,7 +57,7 @@ const result = await account.simulate.sendTransaction({ to: '0x…', value: 1n }
 
 > **Breaking change:** on an account that is (or may become) policy-governed, protocols read through `getXProtocol` are built against the enforced proxy, which hides `_`-prefixed members. Protocols whose constructors read such members — including the published `@tetherto/wdk-protocol-*` packages (Velora, Aave, USDT0), which read `account._config` — must be registered with `wdk.registerProtocol` rather than `account.registerProtocol`, or `getXProtocol`/`simulate.getXProtocol` will throw. Protocols registered via `wdk.registerProtocol` are built against the raw account, so their internal account calls are **not** policy-evaluated.
 
-`attach(wdk, ...wallets)` installs a middleware on each wallet through `wdk.registerMiddleware`, which returns a governed proxy for every account retrieved from it. Attach after any middleware whose effects should be governed too. A middleware registered after `attach` receives the governed account, which refuses new functions and accessors. A policy can only bind to a wallet that has been attached.
+`attach(wdk, ...blockchains)` installs a middleware on each wallet through `wdk.registerMiddleware`, which returns a governed proxy for every account retrieved from it. Attach after any middleware whose effects should be governed too. A middleware registered after `attach` receives the governed account, which refuses new functions and accessors. A policy can only bind to a wallet that has been attached.
 
 ## Migrating from `@tetherto/wdk` 1.0.0-beta.20 and earlier
 
@@ -66,7 +66,7 @@ const result = await account.simulate.sendTransaction({ to: '0x…', value: 1n }
 | `new WDK(seed, { maxConditionTimeoutMs, policyExclusions })` | `new WDK(seed)` and `new WdkPolicies({ maxConditionTimeoutMs, policyExclusions })` |
 | `wdk.registerPolicy(policies, options)` | `new WdkPolicies().attach(wdk, 'ethereum', …).register(policies, options)` |
 | `wdk.getPolicyExclusions()` | `policies.getExclusions()` |
-| `wdk.dispose(wallets)` cleared the policies too | `policies.dispose(wallets)` |
+| `wdk.dispose(blockchains)` cleared the policies too | `policies.dispose(blockchains)` |
 | `import { PolicyViolationError, PolicyConfigurationError, DEFAULT_POLICY_EXCLUSIONS, DENIAL_CODES } from '@tetherto/wdk'` | the same names from `@tetherto/wdk-policies` |
 
 Policies, rules, conditions, the evaluation context, simulation, denial codes and errors are unchanged.

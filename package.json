@@ -31,8 +31,8 @@
     "@tetherto/wdk": "^1.0.0-beta.21"
   },
   "devDependencies": {
-    "@tetherto/wdk": "^1.0.0-beta.21",
-    "@tetherto/wdk-wallet": "^1.0.0-beta.15",
+    "@tetherto/wdk": "1.0.0-beta.21",
+    "@tetherto/wdk-wallet": "1.0.0-beta.24",
     "cross-env": "7.0.3",
     "jest": "30.4.2",
     "standard": "17.1.2",

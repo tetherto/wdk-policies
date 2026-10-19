@@ -10,7 +10,8 @@ export default class WdkPolicies {
      * Creates the plugin.
      *
      * @param {WdkPoliciesOptions} [options] - The engine settings.
-     * @throws {PolicyConfigurationError} If `options` is not a plain object, `maxConditionTimeoutMs` is not a finite positive number, or `policyExclusions` is not an array of non-empty strings.
+     * @throws {PolicyConfigurationError} If `options` is not a plain object, `maxConditionTimeoutMs` is not a finite
+     *   positive number, or `policyExclusions` is not an array of non-empty strings.
      */
     constructor(options?: WdkPoliciesOptions);
     /** @private */
@@ -20,8 +21,8 @@ export default class WdkPolicies {
     /** @private */
     private _attached;
     /**
-     * Governs every account retrieved from the given wallets of a WDK instance. Attaching the same wallet twice installs
-     * one middleware. Register the plugin after any middleware whose effects it should govern.
+     * Governs every account retrieved from the given wallets of a WDK instance. Attaching the same wallet twice
+     * installs one middleware. Register the plugin after any middleware whose effects it should govern.
      *
      * @param {WDK} wdk - The WDK instance.
      * @param {...string} blockchains - The wallet identifiers, as passed to `registerWallet`.
@@ -34,7 +35,8 @@ export default class WdkPolicies {
      * @param {Policy | Policy[]} policies - A single policy or an array of policies.
      * @param {RegisterPolicyOptions} [options] - Settings applied to the policies this call registers.
      * @returns {WdkPolicies} The plugin, for chaining.
-     * @throws {PolicyConfigurationError} If any policy or option fails validation, or a policy binds to a wallet that was never attached.
+     * @throws {PolicyConfigurationError} If any policy or option fails validation, or a policy binds to a wallet
+     *   that was never attached.
      */
     register(policies: Policy | Policy[], options?: RegisterPolicyOptions): WdkPolicies;
     /**
@@ -58,11 +60,13 @@ export type RegisterPolicyOptions = import("./policy-engine.js").RegisterPolicyO
  */
 export type WdkPoliciesOptions = {
     /**
-     * - Upper bound, in milliseconds, on the per-condition timeout any single policy can be given through `register`. Defaults to 30000.
+     * - Upper bound, in milliseconds, on the per-condition timeout any single policy can be given through
+     *   `register`. Defaults to 30000.
      */
     maxConditionTimeoutMs?: number;
     /**
-     * - Additional method names the policy proxy hands through without evaluating, unioned with `DEFAULT_POLICY_EXCLUSIONS`. Append-only.
+     * - Additional method names the policy proxy hands through without evaluating, unioned with
+     *   `DEFAULT_POLICY_EXCLUSIONS`. Append-only.
      */
     policyExclusions?: string[];
 };

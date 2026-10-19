@@ -20,7 +20,7 @@ export default class LegacyWDK extends WDK {
 
     this._policies = new WdkPolicies(options)
 
-    this._legacyMiddlewares = Object.create(null)
+    this._legacyMiddlewares = new Map()
 
     this._legacyWallets = new Set()
 
@@ -34,7 +34,7 @@ export default class LegacyWDK extends WDK {
       this._legacyWallets.add(blockchain)
 
       super.registerMiddleware(blockchain, async (account) => {
-        for (const middleware of this._legacyMiddlewares[blockchain] ?? []) {
+        for (const middleware of this._legacyMiddlewares.get(blockchain) ?? []) {
           await middleware(account)
         }
       })
@@ -46,9 +46,11 @@ export default class LegacyWDK extends WDK {
   }
 
   registerMiddleware (blockchain, middleware) {
-    this._legacyMiddlewares[blockchain] ??= []
+    if (!this._legacyMiddlewares.has(blockchain)) {
+      this._legacyMiddlewares.set(blockchain, [])
+    }
 
-    this._legacyMiddlewares[blockchain].push(middleware)
+    this._legacyMiddlewares.get(blockchain).push(middleware)
 
     return this
   }

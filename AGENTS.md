@@ -9,8 +9,7 @@ This repository is part of the Tether WDK (Wallet Development Kit) ecosystem. It
 ## Tech Stack & Tooling
 - **Language:** JavaScript (ES2015+).
 - **Module System:** ES Modules (`"type": "module"` in package.json).
-- **Type Checking:** TypeScript is used purely for generating type declarations (`.d.ts`). The source code remains JavaScript.
-  - Command: `npm run build:types`
+- **Type Declarations:** The `.d.ts` files in `types/` are maintained by hand to match the source JSDoc. The source code remains JavaScript. Don't run `npm run build:types`: it would overwrite the hand-edited declarations.
 - **Linting:** `standard` (JavaScript Standard Style).
   - Command: `npm run lint` / `npm run lint:fix`
 - **Testing:** `jest` (configured with `experimental-vm-modules` for ESM support).
@@ -25,7 +24,7 @@ This repository is part of the Tether WDK (Wallet Development Kit) ecosystem. It
 - **Copyright:** All source files must include the standard Tether copyright header.
 
 ## Documentation (JSDoc)
-Source code must be strictly typed using JSDoc comments to support the `build:types` process.
+Source code must be strictly typed using JSDoc comments, which the hand-maintained declarations in `types/` mirror.
 - **Types:** Use `@typedef` to define or import types.
 - **Methods:** Use `@param`, `@returns`, `@throws`.
 - **Generics:** Use `@template`.
@@ -34,13 +33,13 @@ Source code must be strictly typed using JSDoc comments to support the `build:ty
 1.  **Install:** `npm install`
 2.  **Lint:** `npm run lint`
 3.  **Test:** `npm test`
-4.  **Build Types:** `npm run build:types`
+4.  **Types:** update the matching `.d.ts` in `types/` by hand.
 
 ## Key Files
 - `index.js`: Main entry point.
 - `bare.js`: Entry point for Bare runtime optimization.
 - `src/`: The policy engine and the `WdkPolicies` plugin.
-- `types/`: Generated type definitions (do not edit manually).
+- `types/`: Hand-maintained type definitions; edit them alongside the source.
 
 ## Repository Specifics
 - **Domain:** Transaction policies, an opt-in plugin for wdk-core.
@@ -56,8 +55,8 @@ Source code must be strictly typed using JSDoc comments to support the `build:ty
 - **Operation name = canonical method name.** A rule's `operation` is validated as any non-empty string, because any callable can be governed. A name that matches nothing still registers and never fires — but the real method stays governed, so a typo now fails safe (loud denial) instead of opening a hole. Adding a write method to a wallet package needs no change here; only adding a *read* does, and it belongs in `DEFAULT_POLICY_EXCLUSIONS` after re-running the audit.
 - Two scopes only: `project` (with optional wallet restriction declared via the policy's `wallet` field) and `account` (with required `wallet` field and a per-account `accounts` list of paths and/or integer indexes). The `wallet` value is the same string passed to `registerWallet` — an opaque consumer-chosen key, not a blockchain identifier. `wallet` accepts a single string or a non-empty array of strings; omitting it on a project-scope policy applies it across every registered wallet. DENY wins across scopes; account-scope `ALLOW` rules can short-circuit project-scope DENYs via `override_broader_scope: true`.
 - Index-form `accounts` entries match the index passed to `wdk.getAccount(wallet, index)`. They do not match accounts retrieved via `getAccountByPath` because the wallet manager has no synchronous path → index resolver. Path-form entries match either retrieval style.
-- Nested-call escape works via a `Proxy` (see `src/policy-account-proxy.js`), not an async-context marker. The engine returns a Proxy that exposes enforced versions of write methods; the proxy's `get` trap binds non-enforced methods to the underlying account, so internal `this.method()` calls and protocol code that holds a direct reference to the account naturally bypass enforcement. The policy engine itself does not mutate the account (the WDK's `_registerProtocols` step does install `registerProtocol` / `getXProtocol` helpers before the proxy is built — separate, pre-existing concern). The same code path runs on every JavaScript runtime that supports `Proxy` — no `AsyncLocalStorage`, no runtime detection, no Bare-specific fallback.
-- Enforcement applies to the **surface of the proxy** only. Underscore-prefixed fields (e.g. `protocol._account`) reach the raw account and bypass enforcement by design — they are private by convention and not part of the supported surface. The same is true for protocol methods that internally call account operations via their stored `this._account` (e.g. `bridge.bridge(...)` calling `this._account.sendTransaction(...)`); this is the documented nested-call escape.
+- Nested-call escape works via a `Proxy` (see `src/policy-account-proxy.js`), not an async-context marker. The engine returns a Proxy that exposes enforced versions of write methods; the proxy's `get` trap binds non-enforced methods to the underlying account, so internal `this.method()` calls and protocols built with the raw account (see below) naturally bypass enforcement. The policy engine itself does not mutate the account (the WDK's `_registerProtocols` step does install `registerProtocol` / `getXProtocol` helpers before the proxy is built — separate, pre-existing concern). The same code path runs on every JavaScript runtime that supports `Proxy` — no `AsyncLocalStorage`, no runtime detection, no Bare-specific fallback.
+- Enforcement applies to the **surface of the proxy** only. Protocols registered with `account.registerProtocol` are built with the governed proxy (through core's `account._buildProtocol(category, label, subject)`), so their internal account calls (e.g. `bridge.bridge(...)` calling `this._account.sendTransaction(...)`) are evaluated too. Protocols registered with `wdk.registerProtocol` are built with the raw account, because published protocol packages read `account._config`, which the proxy hides; their internal account calls are the documented nested-call escape.
 - `proxy.registerProtocol(...)` is special: the underlying helper returns the raw account, so the `get` trap rewrites the return value to be the proxy itself. Without this rewrite, `proxy.registerProtocol(...).sendTransaction(...)` would skip enforcement.
 - Each condition is raced against `conditionTimeoutMs` (default 30s, settable per `register` call via `RegisterPolicyOptions`). The timeout is **per-policy**: it is resolved at registration time, clamped to the engine ceiling, and stored on the registry record, so registration order never changes the timeout another policy is evaluated under. The ceiling is `maxConditionTimeoutMs` (default 30s), set once via `new WdkPolicies(options)`; a policy requesting more is capped, not rejected. A condition that throws or times out is fail-closed for DENY rules (treated as matched → block) and fail-open-as-no-match for ALLOW rules.
 - Conditions are user-supplied functions in Phase 1. The engine accepts `state` and `onSuccess` rule fields for Phase 2 (engine-managed state + post-execution hooks) but ignores them at runtime; `state` is deep-cloned at registration so callers can't mutate engine state post-registration.
