@@ -59,7 +59,7 @@ const result = await account.simulate.sendTransaction({ to: '0x…', value: 1n }
 
 `attach(wdk, ...blockchains)` installs a middleware on each wallet through `wdk.registerMiddleware`, which returns a governed proxy for every account retrieved from it. Attach after any middleware whose effects should be governed too. A middleware registered after `attach` receives the governed account, which refuses new functions and accessors. A policy can only bind to a wallet that has been attached.
 
-## Migrating from `@tetherto/wdk` 1.0.0-beta.20 and earlier
+## Migrating from `@tetherto/wdk` 1.0.0-beta.21 and earlier
 
 | Before, in core | Now |
 |---|---|
@@ -221,7 +221,7 @@ Policy enforcement applies to the **surface of the proxy** returned by `getAccou
 
 ## Compatibility
 
-Requires `@tetherto/wdk` 1.0.0-beta.21 or later, the first release whose middlewares may return a replacement account. Runs on Node.js and Bare.
+Requires `@tetherto/wdk` 1.0.0-beta.22 or later, the first release whose middlewares may return a replacement account. Runs on Node.js and Bare.
 
 ## License
 

@@ -44,7 +44,7 @@ Source code must be strictly typed using JSDoc comments, which the hand-maintain
 ## Repository Specifics
 - **Domain:** Transaction policies, an opt-in plugin for wdk-core.
 - **Role:** Governs the accounts a `WDK` instance hands out with ALLOW and DENY rules. A guardrail against in-process mistakes, not a security boundary.
-- **Key Pattern:** Installs itself through `wdk.registerMiddleware`, whose middlewares may return a replacement account from `@tetherto/wdk` 1.0.0-beta.21 on.
+- **Key Pattern:** Installs itself through `wdk.registerMiddleware`, whose middlewares may return a replacement account from `@tetherto/wdk` 1.0.0-beta.22 on.
 - **Architecture:** `WdkPolicies` owns a `PolicyEngine`; `attach` registers a middleware per wallet that returns the engine's governed proxy for each account retrieved.
 
 ## Policy Engine
