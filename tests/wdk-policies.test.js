@@ -35,6 +35,10 @@ class DummyReadOnlyAccount {
   async getAddress () {
     return '0xdummy-address'
   }
+
+  async waitForTransaction (hash) {
+    return { hash }
+  }
 }
 
 class DummyAccount extends DummyReadOnlyAccount {
@@ -82,6 +86,16 @@ describe('WdkPolicies', () => {
 
       expect(sendTransactionMock).toHaveBeenCalledTimes(1)
       expect(sendTransactionMock).toHaveBeenCalledWith({ to: RECIPIENT, value: 100n })
+      expect(result).toEqual({ hash: DUMMY_TX_HASH })
+    })
+
+    test('should let waitForTransaction through when a policy only allows sends', async () => {
+      new WdkPolicies().attach(wdk, 'ethereum').register(SMALL_SENDS)
+
+      const account = await wdk.getAccount('ethereum', 0)
+
+      const result = await account.waitForTransaction(DUMMY_TX_HASH)
+
       expect(result).toEqual({ hash: DUMMY_TX_HASH })
     })
 

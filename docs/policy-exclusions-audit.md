@@ -130,7 +130,8 @@ These are not wallet methods, but under deny-by-default the proxy sees them like
 
 ```
 IWalletAccountReadOnlySimple
-  READ: getAddress, getBalance, getTokenBalance, getTransactionReceipt, verify
+  READ: getAddress, getBalance, getTokenBalance, getTransactionReceipt, verify,
+        waitForTransaction
 IWalletAccountReadOnly : IWalletAccountReadOnlySimple
   READ: quoteSendTransaction, quoteTransfer
 IWalletAccount : IWalletAccountReadOnly
@@ -353,7 +354,7 @@ These are not collisions, but they are the failure modes a future re-audit is mo
 
 ## Section D — Proposed `DEFAULT_POLICY_EXCLUSIONS`
 
-Union of READ and LIFECYCLE across every audited package, minus collisions (none) and minus the three flagged in Section C. 73 entries, sorted.
+Union of READ and LIFECYCLE across every audited package, minus collisions (none) and minus the three flagged in Section C. 74 entries, sorted.
 
 ```js
 export const DEFAULT_POLICY_EXCLUSIONS = Object.freeze([
@@ -429,7 +430,8 @@ export const DEFAULT_POLICY_EXCLUSIONS = Object.freeze([
   'toReadOnlyAccount',
   'validateSignerIsOwner',
   'verify',
-  'verifyTypedData'
+  'verifyTypedData',
+  'waitForTransaction'
 ])
 ```
 

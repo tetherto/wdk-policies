@@ -96,7 +96,8 @@ export const DEFAULT_POLICY_EXCLUSIONS = Object.freeze([
   'toReadOnlyAccount',
   'validateSignerIsOwner',
   'verify',
-  'verifyTypedData'
+  'verifyTypedData',
+  'waitForTransaction'
 ])
 
 export const WILDCARD = '*'

@@ -3456,15 +3456,15 @@ wdk.registerPolicy({
 
       expect(occurrences).toEqual(['getBalance'])
       expect(resolved).toContain('syncWalletBalance')
-      expect(resolved.length).toBe(74)
+      expect(resolved.length).toBe(75)
     })
 
     test('an empty or omitted policyExclusions resolves to exactly the defaults', () => {
       const emptyWdk = new WDK(SEED_PHRASE, { policyExclusions: [] })
       const omittedWdk = new WDK(SEED_PHRASE)
 
-      expect(emptyWdk.getPolicyExclusions().length).toBe(73)
-      expect(omittedWdk.getPolicyExclusions().length).toBe(73)
+      expect(emptyWdk.getPolicyExclusions().length).toBe(74)
+      expect(omittedWdk.getPolicyExclusions().length).toBe(74)
       expect(emptyWdk.getPolicyExclusions()).toEqual(omittedWdk.getPolicyExclusions())
     })
 
