@@ -126,6 +126,16 @@ describe('WdkPolicies', () => {
       expect(sendTransactionMock).not.toHaveBeenCalled()
     })
 
+    test('should hand a middleware registered after attach the governed account', async () => {
+      new WdkPolicies().attach(wdk, 'ethereum').register(SMALL_SENDS)
+
+      wdk.registerMiddleware('ethereum', (account) => {
+        account.extra = () => {}
+      })
+
+      await expect(wdk.getAccount('ethereum', 0)).rejects.toThrow("Cannot define 'extra' on a policy-governed account: accessors and functions are refused.")
+    })
+
     test('should leave the accounts of wallets that are not attached untouched', async () => {
       new WdkPolicies().attach(wdk, 'ethereum').register({ ...SMALL_SENDS, wallet: undefined })
 
