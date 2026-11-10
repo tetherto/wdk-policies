@@ -58,7 +58,7 @@ export default class WdkPolicies {
 
   /**
    * Governs every account retrieved from the given wallets of a WDK instance. Attaching the same wallet twice
-   * installs one middleware. Register the plugin after any middleware whose effects it should govern.
+   * installs one middleware. Attach after any middleware whose effects should be governed.
    *
    * @param {WDK} wdk - The WDK instance whose accounts the plugin governs.
    * @param {...string} blockchains - The wallet identifiers, as passed to `registerWallet`.
