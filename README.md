@@ -221,7 +221,7 @@ Policy enforcement applies to the **surface of the proxy** returned by `getAccou
 
 ## Compatibility
 
-Requires `@tetherto/wdk` 1.0.0-beta.22 or later, the first release whose middlewares may return a replacement account. Runs on Node.js and Bare.
+Requires `@tetherto/wdk` 1.0.0-beta.23 or later, the first release whose middlewares may return a replacement account. Runs on Node.js and Bare.
 
 ## License
 
