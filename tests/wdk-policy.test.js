@@ -2656,7 +2656,7 @@ wdk.registerPolicy({
         { value: -1, message: "registerPolicy options: 'conditionTimeoutMs': Too small: expected number to be >0" },
         { value: 0, message: "registerPolicy options: 'conditionTimeoutMs': Too small: expected number to be >0" },
         { value: NaN, message: "registerPolicy options: 'conditionTimeoutMs': Invalid input: expected number, received NaN" },
-        { value: Infinity, message: "registerPolicy options: 'conditionTimeoutMs': Invalid input: expected number, received number" },
+        { value: Infinity, message: "registerPolicy options: 'conditionTimeoutMs': Invalid input: expected number, received Infinity" },
         { value: '30000', message: "registerPolicy options: 'conditionTimeoutMs': Invalid input: expected number, received string" },
         { value: null, message: "registerPolicy options: 'conditionTimeoutMs': Invalid input: expected number, received null" }
       ]
@@ -2805,7 +2805,7 @@ wdk.registerPolicy({
         { value: -1, message: "WDK options: 'maxConditionTimeoutMs': Too small: expected number to be >0" },
         { value: 0, message: "WDK options: 'maxConditionTimeoutMs': Too small: expected number to be >0" },
         { value: NaN, message: "WDK options: 'maxConditionTimeoutMs': Invalid input: expected number, received NaN" },
-        { value: Infinity, message: "WDK options: 'maxConditionTimeoutMs': Invalid input: expected number, received number" },
+        { value: Infinity, message: "WDK options: 'maxConditionTimeoutMs': Invalid input: expected number, received Infinity" },
         { value: '30000', message: "WDK options: 'maxConditionTimeoutMs': Invalid input: expected number, received string" },
         { value: null, message: "WDK options: 'maxConditionTimeoutMs': Invalid input: expected number, received null" }
       ]
