@@ -26,6 +26,8 @@
 
 /** @typedef {import('./policy-engine.js').Policy} Policy */
 /** @typedef {import('./policy-engine.js').PolicyRule} PolicyRule */
+/** @typedef {import('./policy-engine.js').AccountIdentifier} AccountIdentifier */
+/** @typedef {import('./policy-engine.js').AddressIdentifier} AddressIdentifier */
 /** @typedef {import('./policy-engine.js').PolicyCondition} PolicyCondition */
 /** @typedef {import('./policy-engine.js').PolicyContext} PolicyContext */
 /** @typedef {import('./policy-engine.js').PolicyAction} PolicyAction */

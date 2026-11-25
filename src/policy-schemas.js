@@ -34,7 +34,8 @@ const operationField = z.union([
 
 const accountIdentifier = z.union([
   z.string().min(1),
-  z.number().int().nonnegative()
+  z.number().int().nonnegative(),
+  z.object({ address: z.string().min(1) }).strict()
 ])
 
 const conditionFunction = z.custom((v) => typeof v === 'function')

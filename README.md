@@ -73,7 +73,7 @@ Policies, rules, conditions, the evaluation context, simulation, denial codes an
 
 ## Policies
 
-Policies have two scopes — `project` and `account`. A project-scope policy applies globally by default, or only to the wallets named in its `wallet` field (`wallet: 'ethereum'` or `wallet: ['ethereum', 'ton']`). The `wallet` value is the same string passed to `registerWallet`. It might be a chain name like `"ethereum"`, but it could equally be `"treasury-cold"` or any label the consumer chose; the engine treats it as an opaque key. An account-scope policy must declare a `wallet` and targets specific accounts within it, identified by either the full `account.path` (`accounts: ["m/44'/60'/0'/0/0"]` for the first Ethereum account) or integer index (`accounts: [0, 1]`) — index entries match accounts retrieved via `wdk.getAccount(wallet, index)`; path entries match either retrieval style. Evaluation is narrowest-first with `DENY` winning across scopes. Account-scope `ALLOW` rules can opt into `override_broader_scope: true` to short-circuit broader policies for explicit exceptions (e.g., treasury accounts). Conditions can be sync or async and may carry user-owned state via closures. Templates (`@tetherto/wdk-policy-templates`) and a portal UI for editing policies are coming in later phases.
+Policies have two scopes — `project` and `account`. A project-scope policy applies globally by default, or only to the wallets named in its `wallet` field (`wallet: 'ethereum'` or `wallet: ['ethereum', 'ton']`). The `wallet` value is the same string passed to `registerWallet`. It might be a chain name like `"ethereum"`, but it could equally be `"treasury-cold"` or any label the consumer chose; the engine treats it as an opaque key. An account-scope policy must declare a `wallet` and targets specific accounts within it, identified by the full `account.path` (`accounts: ["m/44'/60'/0'/0/0"]` for the first Ethereum account), an integer index (`accounts: [0, 1]`) or an address (`accounts: [{ address: '0x19E7…' }]`) — index entries match accounts retrieved via `wdk.getAccount(wallet, index)`; path entries match either retrieval style; address entries match the account with that address however it was retrieved, including accounts that have no path or index. Evaluation is narrowest-first with `DENY` winning across scopes. Account-scope `ALLOW` rules can opt into `override_broader_scope: true` to short-circuit broader policies for explicit exceptions (e.g., treasury accounts). Conditions can be sync or async and may carry user-owned state via closures. Templates (`@tetherto/wdk-policy-templates`) and a portal UI for editing policies are coming in later phases.
 
 ### Account policy paths
 
@@ -94,6 +94,23 @@ policies.register({
 // A handle taken before the policy was registered is ungoverned; fetch again.
 const governed = await wdk.getAccount('ethereum', 0)
 await governed.sign('message') // throws PolicyViolationError
+```
+
+### Account policy addresses
+
+An `{ address }` entry selects an account by the address `account.getAddress()` returns, so it works for every account: derived from the seed, imported, or from a hardware signer. Hex addresses starting with `0x` match in any letter case; other addresses (TRON, Bitcoin, Solana, …) must match exactly, so copy the value `getAddress()` returns. While a wallet has an address entry, its accounts' addresses are read to match them, and if `getAddress()` fails, retrieving or using the account fails too. As with any policy, an account fetched before the first policy that covers it was registered is not governed; fetch it again:
+
+```javascript
+const treasury = await wdk.getAccount('ethereum', 3)
+
+policies.register({
+  id: 'lock-treasury',
+  name: 'Lock the treasury account',
+  scope: 'account',
+  wallet: 'ethereum',
+  accounts: [{ address: await treasury.getAddress() }],
+  rules: [{ name: 'deny-send', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+})
 ```
 
 ### Condition context

@@ -15,6 +15,8 @@
 
 /** @typedef {import('./src/index.js').Policy} Policy */
 /** @typedef {import('./src/index.js').PolicyRule} PolicyRule */
+/** @typedef {import('./src/index.js').AccountIdentifier} AccountIdentifier */
+/** @typedef {import('./src/index.js').AddressIdentifier} AddressIdentifier */
 /** @typedef {import('./src/index.js').PolicyCondition} PolicyCondition */
 /** @typedef {import('./src/index.js').PolicyContext} PolicyContext */
 /** @typedef {import('./src/index.js').PolicyAction} PolicyAction */

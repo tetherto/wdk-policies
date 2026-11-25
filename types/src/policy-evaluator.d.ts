@@ -21,7 +21,7 @@
  *
  * @internal
  * @param {PolicyContext} context - The frozen context built for this call.
- * @param {PolicyGroups} groups - Pre-filtered policies applicable to the (wallet, path, index) tuple, partitioned by scope. Each carries the condition timeout it was registered with.
+ * @param {PolicyGroups} groups - Pre-filtered policies applicable to the (wallet, path, index, address) tuple, partitioned by scope. Each carries the condition timeout it was registered with.
  * @returns {Promise<Verdict>} The verdict, including a trace of all rules considered.
  */
 export function evaluate(context: PolicyContext, groups: PolicyGroups): Promise<Verdict>;

@@ -22,7 +22,7 @@
  * (i.e. all of them). No async context, no Promise patching, no
  * runtime-specific code paths.
  *
- * If no policy applies to the (wallet, path, index) tuple, the function
+ * If no policy applies to the (wallet, path, index, address) tuple, the function
  * returns the original account unchanged.
  *
  * @internal
@@ -30,6 +30,7 @@
  * @param {WrapContext} options - The per-account routing context (wallet identifier, path/index, and the engine reference).
  * @returns {Promise<IWalletAccount>} The proxy-wrapped account, or the original if no policy applies.
  * @throws {PolicyConfigurationError} If at least one policy applies but the underlying account does not implement `toReadOnlyAccount()`.
+ * @throws {Error} If the wallet has an account-scope policy that names an account by address and the account's `getAddress()` fails.
  */
 export function createPolicyEnforcedAccount(account: IWalletAccount, { blockchain, path, index, engine }: WrapContext): Promise<IWalletAccount>;
 /**
