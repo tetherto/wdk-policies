@@ -1,6 +1,6 @@
 /** @typedef {import('./policy-engine.js').Policy} Policy */
 /**
- * Policies applicable to a given (wallet, path, index) tuple, partitioned by scope.
+ * Policies applicable to a given (wallet, path, index, address) tuple, partitioned by scope.
  *
  * @typedef {Object} PolicyGroups
  * @property {Policy[]} account - Account-scope policies applicable to the call.
@@ -11,7 +11,7 @@
  *   - `_project`               project-scope policies, ordered list, indexed by id.
  *   - `_accountByWallet`       Map<wallet, ordered list of account-scope policies>
  *                              bound to that wallet identifier (matching against
- *                              `policy.accounts` entries — paths or indexes — is
+ *                              `policy.accounts` entries — paths, indexes or addresses — is
  *                              done at evaluation time).
  *
  * Same-id-within-same-bucket replaces in place, preserving registration order.
@@ -44,29 +44,40 @@ export default class PolicyRegistry {
      */
     add(policy: Policy, wallets: string[] | undefined, conditionTimeoutMs: number): void;
     /**
-     * Returns the policies that may apply to a given (wallet, path, index) call,
+     * Returns the policies that may apply to a given (wallet, path, index, address) call,
      * partitioned into the two groups (account, project). An account-scope
-     * policy matches when `policy.accounts` contains the path (string match)
-     * or the index (number match). A project-scope policy matches when it
-     * has no wallet restriction or its restriction includes the wallet.
+     * policy matches when `policy.accounts` contains the path (string match),
+     * the index (number match) or the address (`{ address }` match). A
+     * project-scope policy matches when it has no wallet restriction or its
+     * restriction includes the wallet.
      *
      * @param {string} wallet - The wallet identifier the call targets.
      * @param {string | undefined} path - Derivation path of the account, when known.
      * @param {number | undefined} index - Account index, when known.
+     * @param {string | undefined} [address] - The account's address, when known.
      * @returns {PolicyGroups} The applicable policies partitioned by scope.
      */
-    applicable(wallet: string, path: string | undefined, index: number | undefined): PolicyGroups;
+    applicable(wallet: string, path: string | undefined, index: number | undefined, address?: string | undefined): PolicyGroups;
     /**
-     * Returns every policy that's potentially relevant to a given (wallet, path, index),
+     * Returns every policy that's potentially relevant to a given (wallet, path, index, address),
      * regardless of scope. Used to compute the operation-name set the wrapper
      * needs to handle.
      *
      * @param {string} wallet - The wallet identifier the call targets.
      * @param {string | undefined} path - Derivation path of the account, when known.
      * @param {number | undefined} index - Account index, when known.
+     * @param {string | undefined} [address] - The account's address, when known.
      * @returns {Policy[]} All applicable policies flattened across scopes.
      */
-    relevant(wallet: string, path: string | undefined, index: number | undefined): Policy[];
+    relevant(wallet: string, path: string | undefined, index: number | undefined, address?: string | undefined): Policy[];
+    /**
+     * Returns whether an account-scope policy bound to the wallet names an account by address,
+     * so the account's address is needed to match it.
+     *
+     * @param {string} wallet - The wallet identifier.
+     * @returns {boolean} True if an account-scope policy of the wallet has an `{ address }` entry.
+     */
+    hasAddressEntries(wallet: string): boolean;
     /**
      * Removes every binding of this wallet from the registry:
      * - account-scope policies bound to the wallet are dropped entirely.
@@ -85,7 +96,7 @@ export default class PolicyRegistry {
 }
 export type Policy = import("./policy-engine.js").Policy;
 /**
- * Policies applicable to a given (wallet, path, index) tuple, partitioned by scope.
+ * Policies applicable to a given (wallet, path, index, address) tuple, partitioned by scope.
  */
 export type PolicyGroups = {
     /**

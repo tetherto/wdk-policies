@@ -32,6 +32,8 @@ import PolicyViolationError, { PolicyConfigurationError } from './policy-error.j
  * @property {string | undefined} path - The derivation path captured at wrap time, used to resolve account-scope bindings. Captured here rather than re-read from `account.path` on each call so a later change to `account.path` cannot make a path-bound rule miss.
  * @property {number | undefined} index - The index passed to `wdk.getAccount(wallet, index)`, when the account
  *   was retrieved that way.
+ * @property {string | undefined} address - The account's address, read once an address-form entry in `policy.accounts`
+ *   needs it, then kept for later calls.
  * @property {PolicyEngine} engine - The engine that evaluates each intercepted call.
  */
 
@@ -235,7 +237,7 @@ function collectTrustedFunctions (subject, governedMethods) {
  * (i.e. all of them). No async context, no Promise patching, no
  * runtime-specific code paths.
  *
- * If no policy applies to the (wallet, path, index) tuple, the function
+ * If no policy applies to the (wallet, path, index, address) tuple, the function
  * returns the original account unchanged.
  *
  * @internal
@@ -243,9 +245,12 @@ function collectTrustedFunctions (subject, governedMethods) {
  * @param {WrapContext} options - The per-account routing context (wallet identifier, path/index, and the engine reference).
  * @returns {Promise<IWalletAccount>} The proxy-wrapped account, or the original if no policy applies.
  * @throws {PolicyConfigurationError} If at least one policy applies but the underlying account does not implement `toReadOnlyAccount()`.
+ * @throws {Error} If the wallet has an account-scope policy that names an account by address and the account's `getAddress()` fails.
  */
 export async function createPolicyEnforcedAccount (account, { blockchain, path, index, engine }) {
-  if (!engine._isGoverned(blockchain, path, index)) return account
+  const address = engine._needsAddress(blockchain) ? await account.getAddress() : undefined
+
+  if (!engine._isGoverned(blockchain, path, index, address)) return account
 
   if (typeof account.toReadOnlyAccount !== 'function') {
     throw new PolicyConfigurationError(
@@ -255,7 +260,7 @@ export async function createPolicyEnforcedAccount (account, { blockchain, path, 
 
   const readOnlyAccount = await account.toReadOnlyAccount()
 
-  const ctx = { account, readOnlyAccount, blockchain, path, index, engine }
+  const ctx = { account, readOnlyAccount, blockchain, path, index, address, engine }
 
   const substitutions = new Map()
 
@@ -341,7 +346,7 @@ function buildEnforcedMethod (name, boundOriginal, ctx) {
       args: forwardedArgs
     })
 
-    const verdict = await ctx.engine._evaluateContext(context, { path: ctx.path, index: ctx.index })
+    const verdict = await ctx.engine._evaluateContext(context, { path: ctx.path, index: ctx.index, address: await accountAddress(ctx) })
 
     if (verdict.outcome === 'BLOCK') {
       throw new PolicyViolationError({
@@ -476,7 +481,7 @@ function buildSimulateMirror (methodNames, ctx, handle) {
         args
       })
 
-      return ctx.engine._simulateContext(context, { path: ctx.path, index: ctx.index })
+      return ctx.engine._simulateContext(context, { path: ctx.path, index: ctx.index, address: await accountAddress(ctx) })
     }
   }
 
@@ -503,7 +508,7 @@ function buildSimulateMirror (methodNames, ctx, handle) {
             args
           })
 
-          return ctx.engine._simulateContext(context, { path: ctx.path, index: ctx.index })
+          return ctx.engine._simulateContext(context, { path: ctx.path, index: ctx.index, address: await accountAddress(ctx) })
         }
       }
 
@@ -512,4 +517,12 @@ function buildSimulateMirror (methodNames, ctx, handle) {
   }
 
   return simulate
+}
+
+async function accountAddress (ctx) {
+  if (ctx.address === undefined && ctx.engine._needsAddress(ctx.blockchain)) {
+    ctx.address = await ctx.account.getAddress()
+  }
+
+  return ctx.address
 }

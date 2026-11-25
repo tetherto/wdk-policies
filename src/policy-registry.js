@@ -17,7 +17,7 @@
 /** @typedef {import('./policy-engine.js').Policy} Policy */
 
 /**
- * Policies applicable to a given (wallet, path, index) tuple, partitioned by scope.
+ * Policies applicable to a given (wallet, path, index, address) tuple, partitioned by scope.
  *
  * @typedef {Object} PolicyGroups
  * @property {Policy[]} account - Account-scope policies applicable to the call.
@@ -29,7 +29,7 @@
  *   - `_project`               project-scope policies, ordered list, indexed by id.
  *   - `_accountByWallet`       Map<wallet, ordered list of account-scope policies>
  *                              bound to that wallet identifier (matching against
- *                              `policy.accounts` entries — paths or indexes — is
+ *                              `policy.accounts` entries — paths, indexes or addresses — is
  *                              done at evaluation time).
  *
  * Same-id-within-same-bucket replaces in place, preserving registration order.
@@ -86,24 +86,26 @@ export default class PolicyRegistry {
   }
 
   /**
-   * Returns the policies that may apply to a given (wallet, path, index) call,
+   * Returns the policies that may apply to a given (wallet, path, index, address) call,
    * partitioned into the two groups (account, project). An account-scope
-   * policy matches when `policy.accounts` contains the path (string match)
-   * or the index (number match). A project-scope policy matches when it
-   * has no wallet restriction or its restriction includes the wallet.
+   * policy matches when `policy.accounts` contains the path (string match),
+   * the index (number match) or the address (`{ address }` match). A
+   * project-scope policy matches when it has no wallet restriction or its
+   * restriction includes the wallet.
    *
    * @param {string} wallet - The wallet identifier the call targets.
    * @param {string | undefined} path - Derivation path of the account, when known.
    * @param {number | undefined} index - Account index, when known.
+   * @param {string | undefined} [address] - The account's address, when known.
    * @returns {PolicyGroups} The applicable policies partitioned by scope.
    */
-  applicable (wallet, path, index) {
+  applicable (wallet, path, index, address) {
     const account = []
     const accountPolicies = this._accountByWallet.get(wallet)
 
     if (accountPolicies) {
       for (const policy of accountPolicies) {
-        if (matchesAccount(policy.accounts, path, index)) {
+        if (matchesAccount(policy.accounts, path, index, address)) {
           account.push(policy)
         }
       }
@@ -121,19 +123,33 @@ export default class PolicyRegistry {
   }
 
   /**
-   * Returns every policy that's potentially relevant to a given (wallet, path, index),
+   * Returns every policy that's potentially relevant to a given (wallet, path, index, address),
    * regardless of scope. Used to compute the operation-name set the wrapper
    * needs to handle.
    *
    * @param {string} wallet - The wallet identifier the call targets.
    * @param {string | undefined} path - Derivation path of the account, when known.
    * @param {number | undefined} index - Account index, when known.
+   * @param {string | undefined} [address] - The account's address, when known.
    * @returns {Policy[]} All applicable policies flattened across scopes.
    */
-  relevant (wallet, path, index) {
-    const { account, project } = this.applicable(wallet, path, index)
+  relevant (wallet, path, index, address) {
+    const { account, project } = this.applicable(wallet, path, index, address)
 
     return [...account, ...project]
+  }
+
+  /**
+   * Returns whether an account-scope policy bound to the wallet names an account by address,
+   * so the account's address is needed to match it.
+   *
+   * @param {string} wallet - The wallet identifier.
+   * @returns {boolean} True if an account-scope policy of the wallet has an `{ address }` entry.
+   */
+  hasAddressEntries (wallet) {
+    const accountPolicies = this._accountByWallet.get(wallet) ?? []
+
+    return accountPolicies.some((policy) => policy.accounts.some((entry) => typeof entry === 'object'))
   }
 
   /**
@@ -171,7 +187,7 @@ export default class PolicyRegistry {
   }
 }
 
-function matchesAccount (accounts, path, index) {
+function matchesAccount (accounts, path, index, address) {
   if (!Array.isArray(accounts)) return false
 
   for (const entry of accounts) {
@@ -179,10 +195,18 @@ function matchesAccount (accounts, path, index) {
       if (path !== undefined && entry === path) return true
     } else if (typeof entry === 'number') {
       if (index !== undefined && entry === index) return true
+    } else if (address !== undefined && sameAddress(entry.address, address)) {
+      return true
     }
   }
 
   return false
+}
+
+function sameAddress (a, b) {
+  if (a.startsWith('0x') && b.startsWith('0x')) return a.toLowerCase() === b.toLowerCase()
+
+  return a === b
 }
 
 function replaceById (list, policy) {
@@ -198,7 +222,7 @@ function replaceById (list, policy) {
 function clonePolicy (policy) {
   return {
     ...policy,
-    accounts: policy.accounts ? [...policy.accounts] : undefined,
+    accounts: policy.accounts ? policy.accounts.map((entry) => typeof entry === 'object' ? { address: entry.address } : entry) : undefined,
     rules: policy.rules.map(cloneRule)
   }
 }

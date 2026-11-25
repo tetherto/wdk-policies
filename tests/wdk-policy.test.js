@@ -3089,6 +3089,295 @@ wdk.registerPolicy({
       expect(result.hash).toBe(DUMMY_TX_HASH)
     })
 
+    test('an address entry matches a named-signer account, which has no path and no index', async () => {
+      const ALICE_ADDRESS = '0x5555555555555555555555555555555555555555'
+      const alice = { ...buildAccount(PATH_DEFAULT), path: null, index: undefined, getAddress: async () => ALICE_ADDRESS }
+
+      getAccountMock.mockImplementation(async (idOrName) => idOrName === 'alice' ? alice : buildAccount(`0'/0/${idOrName}`))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy({
+          id: 'lock-alice',
+          name: 'lock-alice',
+          scope: 'account',
+          wallet: 'ethereum',
+          accounts: [{ address: ALICE_ADDRESS }],
+          rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+        })
+
+      const named = await wdk.getAccount('ethereum', 'alice')
+      const err = await catchAsync(() => named.sendTransaction({ to: RECIPIENT, value: 1n }))
+
+      expect(err.policyId).toBe('lock-alice')
+      expect(sendTransactionMock).not.toHaveBeenCalled()
+    })
+
+    test('an address entry leaves accounts with another address untouched', async () => {
+      getAccountMock.mockImplementation(async (idx) => buildAccount(`0'/0/${idx}`, { getAddress: async () => `0x000000000000000000000000000000000000000${idx}` }))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy({
+          id: 'lock-0',
+          name: 'lock-0',
+          scope: 'account',
+          wallet: 'ethereum',
+          accounts: [{ address: '0x0000000000000000000000000000000000000000' }],
+          rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+        })
+
+      const account0 = await wdk.getAccount('ethereum', 0)
+      const account1 = await wdk.getAccount('ethereum', 1)
+
+      const err = await catchAsync(() => account0.sendTransaction({ to: RECIPIENT, value: 1n }))
+      const result = await account1.sendTransaction({ to: RECIPIENT, value: 1n })
+
+      expect(err.policyId).toBe('lock-0')
+      expect(result.hash).toBe(DUMMY_TX_HASH)
+    })
+
+    test('an address entry matches an account retrieved via getAccountByPath', async () => {
+      const ADDRESS = '0x6666666666666666666666666666666666666666'
+
+      getAccountByPathMock.mockResolvedValue(buildAccount("0'/0/7", { getAddress: async () => ADDRESS }))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy({
+          id: 'by-address',
+          name: 'by-address',
+          scope: 'account',
+          wallet: 'ethereum',
+          accounts: [{ address: ADDRESS }],
+          rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+        })
+
+      const account = await wdk.getAccountByPath('ethereum', "0'/0/7")
+      const err = await catchAsync(() => account.sendTransaction({ to: RECIPIENT, value: 1n }))
+
+      expect(err.policyId).toBe('by-address')
+    })
+
+    test('a hex address entry matches the account address in any letter case', async () => {
+      getAccountMock.mockResolvedValue(buildAccount(PATH_DEFAULT, { getAddress: async () => '0xAbCdEf0000000000000000000000000000000001' }))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy({
+          id: 'case',
+          name: 'case',
+          scope: 'account',
+          wallet: 'ethereum',
+          accounts: [{ address: '0xabcdef0000000000000000000000000000000001' }],
+          rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+        })
+
+      const account = await wdk.getAccount('ethereum', 0)
+      const err = await catchAsync(() => account.sendTransaction({ to: RECIPIENT, value: 1n }))
+
+      expect(err.policyId).toBe('case')
+    })
+
+    test('a non-hex address entry must match the account address exactly', async () => {
+      getAccountMock.mockResolvedValue(buildAccount(PATH_DEFAULT, { getAddress: async () => 'TCmGCGFR8ApgtEoq2kpHUgWDCFPrktxPD2' }))
+
+      wdk
+        .registerWallet('tron', WalletManagerMock, {})
+        .registerPolicy({
+          id: 'case',
+          name: 'case',
+          scope: 'account',
+          wallet: 'tron',
+          accounts: [{ address: 'tcmgcgfr8apgteoq2kphugwdcfprktxpd2' }],
+          rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+        })
+
+      const account = await wdk.getAccount('tron', 0)
+      const result = await account.sendTransaction({ to: RECIPIENT, value: 1n })
+
+      expect(result.hash).toBe(DUMMY_TX_HASH)
+    })
+
+    test('does not read the account address when no policy names an account by address', async () => {
+      const getAddressMock = jest.fn()
+
+      getAccountMock.mockResolvedValue(buildAccount(PATH_DEFAULT, { getAddress: getAddressMock }))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy({
+          id: 'by-index',
+          name: 'by-index',
+          scope: 'account',
+          wallet: 'ethereum',
+          accounts: [0],
+          rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+        })
+
+      await wdk.getAccount('ethereum', 0)
+
+      expect(getAddressMock).not.toHaveBeenCalled()
+    })
+
+    test('keeps the registered address when the caller later mutates the entry', async () => {
+      const ADDRESS = '0x7777777777777777777777777777777777777777'
+      const entry = { address: ADDRESS }
+
+      getAccountMock.mockResolvedValue(buildAccount(PATH_DEFAULT, { getAddress: async () => ADDRESS }))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy({
+          id: 'frozen',
+          name: 'frozen',
+          scope: 'account',
+          wallet: 'ethereum',
+          accounts: [entry],
+          rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+        })
+
+      entry.address = '0x8888888888888888888888888888888888888888'
+
+      const account = await wdk.getAccount('ethereum', 0)
+      const err = await catchAsync(() => account.sendTransaction({ to: RECIPIENT, value: 1n }))
+
+      expect(err.policyId).toBe('frozen')
+    })
+
+    test('an address policy registered later binds an account already governed by another policy', async () => {
+      const ADDRESS = '0x9999999999999999999999999999999999999999'
+
+      getAccountMock.mockResolvedValue(buildAccount(PATH_DEFAULT, { getAddress: async () => ADDRESS }))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy({ ...projectAllowAll('allow-all'), wallet: 'ethereum' })
+
+      const account = await wdk.getAccount('ethereum', 0)
+
+      wdk.registerPolicy({
+        id: 'late',
+        name: 'late',
+        scope: 'account',
+        wallet: 'ethereum',
+        accounts: [{ address: ADDRESS }],
+        rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+      })
+
+      const err = await catchAsync(() => account.sendTransaction({ to: RECIPIENT, value: 1n }))
+
+      expect(err.policyId).toBe('late')
+    })
+
+    test('simulate evaluates address entries', async () => {
+      const ADDRESS = '0x9999999999999999999999999999999999999999'
+
+      getAccountMock.mockResolvedValue(buildAccount(PATH_DEFAULT, { getAddress: async () => ADDRESS }))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy({
+          id: 'by-address',
+          name: 'by-address',
+          scope: 'account',
+          wallet: 'ethereum',
+          accounts: [{ address: ADDRESS }],
+          rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+        })
+
+      const account = await wdk.getAccount('ethereum', 0)
+      const result = await account.simulate.sendTransaction({ to: RECIPIENT, value: 1n })
+
+      expect(result.decision).toBe('DENY')
+      expect(result.policy_id).toBe('by-address')
+    })
+
+    test('an address-bound ALLOW with override_broader_scope overrides a project DENY for that account only', async () => {
+      const TREASURY = '0x9999999999999999999999999999999999999999'
+
+      getAccountMock.mockImplementation(async (idx) => buildAccount(`0'/0/${idx}`, { getAddress: async () => idx === 0 ? TREASURY : RECIPIENT }))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy([
+          { ...projectDenyAll('freeze'), wallet: 'ethereum' },
+          {
+            id: 'treasury',
+            name: 'treasury',
+            scope: 'account',
+            wallet: 'ethereum',
+            accounts: [{ address: TREASURY }],
+            rules: [{ name: 'allow', operation: 'sendTransaction', action: 'ALLOW', override_broader_scope: true, conditions: [] }]
+          }
+        ])
+
+      const treasury = await wdk.getAccount('ethereum', 0)
+      const other = await wdk.getAccount('ethereum', 1)
+
+      const result = await treasury.sendTransaction({ to: RECIPIENT, value: 1n })
+      const err = await catchAsync(() => other.sendTransaction({ to: RECIPIENT, value: 1n }))
+
+      expect(result.hash).toBe(DUMMY_TX_HASH)
+      expect(err.policyId).toBe('freeze')
+    })
+
+    test('fails to retrieve an account whose address cannot be read while an address entry exists', async () => {
+      getAccountMock.mockResolvedValue(buildAccount(PATH_DEFAULT, { getAddress: async () => { throw new Error('dummy-device-disconnected') } }))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy({
+          id: 'by-address',
+          name: 'by-address',
+          scope: 'account',
+          wallet: 'ethereum',
+          accounts: [{ address: '0x9999999999999999999999999999999999999999' }],
+          rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+        })
+
+      await expect(wdk.getAccount('ethereum', 0)).rejects.toThrow('dummy-device-disconnected')
+    })
+
+    test('an address entry with an uppercase 0X prefix is compared exactly', async () => {
+      getAccountMock.mockResolvedValue(buildAccount(PATH_DEFAULT, { getAddress: async () => '0xabcdef0000000000000000000000000000000001' }))
+
+      wdk
+        .registerWallet('ethereum', WalletManagerMock, {})
+        .registerPolicy({
+          id: 'prefix',
+          name: 'prefix',
+          scope: 'account',
+          wallet: 'ethereum',
+          accounts: [{ address: '0Xabcdef0000000000000000000000000000000001' }],
+          rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+        })
+
+      const account = await wdk.getAccount('ethereum', 0)
+      const result = await account.sendTransaction({ to: RECIPIENT, value: 1n })
+
+      expect(result.hash).toBe(DUMMY_TX_HASH)
+    })
+
+    test.each([
+      [{ address: '' }, "Policy 'bad': 'accounts.0.address': Too small: expected string to have >=1 characters"],
+      [{ address: '0x0000000000000000000000000000000000000000', path: "0'/0/0" }, "Policy 'bad': 'accounts.0': Unrecognized key: \"path\""]
+    ])('throws PolicyConfigurationError for the account entry %j', (entry, message) => {
+      wdk.registerWallet('ethereum', WalletManagerMock, {})
+
+      const err = catchSync(() => wdk.registerPolicy({
+        id: 'bad',
+        name: 'bad',
+        scope: 'account',
+        wallet: 'ethereum',
+        accounts: [entry],
+        rules: [{ name: 'deny', operation: 'sendTransaction', action: 'DENY', conditions: [] }]
+      }))
+
+      expect(err.name).toBe('PolicyConfigurationError')
+      expect(err.message).toBe(message)
+    })
+
     test('the full account.path matches, governing the account', async () => {
       const fullPath = "m/44'/60'/0'/0/0"
 

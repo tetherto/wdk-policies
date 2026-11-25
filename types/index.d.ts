@@ -1,6 +1,8 @@
 export { default, default as WdkPolicies } from "./src/wdk-policies.js";
 export type Policy = import("./src/index.js").Policy;
 export type PolicyRule = import("./src/index.js").PolicyRule;
+export type AccountIdentifier = import("./src/index.js").AccountIdentifier;
+export type AddressIdentifier = import("./src/index.js").AddressIdentifier;
 export type PolicyCondition = import("./src/index.js").PolicyCondition;
 export type PolicyContext = import("./src/index.js").PolicyContext;
 export type PolicyAction = import("./src/index.js").PolicyAction;

@@ -84,11 +84,19 @@ import {
  */
 
 /**
- * Identifies an account targeted by an account-scope policy: either a derivation
- * path (string, exact match against `account.path`) or a non-negative integer
- * index (matched against the index passed to `wdk.getAccount(wallet, index)`).
+ * Identifies an account by its address, whatever signer or retrieval style it comes from.
  *
- * @typedef {string | number} AccountIdentifier
+ * @typedef {Object} AddressIdentifier
+ * @property {string} address - The account's address, as returned by `account.getAddress()`. Hex addresses starting with `0x` match in any letter case; other addresses must match exactly.
+ */
+
+/**
+ * Identifies an account targeted by an account-scope policy: a derivation
+ * path (string, exact match against `account.path`), a non-negative integer
+ * index (matched against the index passed to `wdk.getAccount(wallet, index)`),
+ * or an address.
+ *
+ * @typedef {string | number | AddressIdentifier} AccountIdentifier
  */
 
 /**
@@ -100,7 +108,7 @@ import {
  * @property {string} name - Human-readable label.
  * @property {PolicyScope} scope - Whether the policy applies to all accounts on the wallet(s) (`project`) or a specific subset (`account`).
  * @property {string | string[]} [wallet] - The wallet identifier(s) this policy binds to. Each entry must match a string previously passed to `wdk.registerWallet`. For `scope: 'project'`, omitting `wallet` applies the policy across every registered wallet; providing one or more narrows it to those wallets. For `scope: 'account'`, `wallet` is required.
- * @property {AccountIdentifier[]} [accounts] - The accounts this policy applies to (required when scope is 'account'). Each entry is either a derivation path (exact-string match against `account.path`) or a non-negative integer (match against the index passed to `wdk.getAccount(wallet, index)`). Index entries do not match accounts retrieved via `getAccountByPath` — use derivation paths if you need both retrieval styles to work.
+ * @property {AccountIdentifier[]} [accounts] - The accounts this policy applies to (required when scope is 'account'). Each entry is a derivation path (exact-string match against `account.path`), a non-negative integer (match against the index passed to `wdk.getAccount(wallet, index)`) or an `{ address }` (match against `account.getAddress()`). Index entries do not match accounts retrieved via `getAccountByPath` — use derivation paths if you need both retrieval styles to work. An `{ address }` entry matches the account with that address however it was retrieved, including accounts with no path or index.
  * @property {PolicyRule[]} rules - Ordered list of rules. Evaluation is rule-by-rule within a policy; DENY wins over ALLOW within the same scope.
  */
 
@@ -285,6 +293,7 @@ export default class PolicyEngine {
    * @param {Omit<WrapContext, 'engine'>} ctx - The per-account routing context. The engine reference is supplied by `this`.
    * @returns {Promise<IWalletAccount>} The enforced proxy, or the original account if no policy applies.
    * @throws {PolicyConfigurationError} If at least one policy applies but the underlying account does not implement `toReadOnlyAccount()`.
+   * @throws {Error} If the wallet has an account-scope policy that names an account by address and the account's `getAddress()` fails.
    */
   async applyPoliciesTo (account, { blockchain, path, index }) {
     return createPolicyEnforcedAccount(account, { blockchain, path, index, engine: this })
@@ -308,22 +317,27 @@ export default class PolicyEngine {
   }
 
   /** @private */
-  _isGoverned (wallet, path, index) {
-    const groups = this._registry.applicable(wallet, path, index)
+  _needsAddress (wallet) {
+    return this._registry.hasAddressEntries(wallet)
+  }
+
+  /** @private */
+  _isGoverned (wallet, path, index, address) {
+    const groups = this._registry.applicable(wallet, path, index, address)
 
     return groups.account.length > 0 || groups.project.length > 0
   }
 
   /** @private */
-  async _evaluateContext (context, { path, index }) {
-    const groups = this._registry.applicable(context.wallet, path, index)
+  async _evaluateContext (context, { path, index, address }) {
+    const groups = this._registry.applicable(context.wallet, path, index, address)
 
     return evaluate(context, groups)
   }
 
   /** @private */
-  async _simulateContext (context, { path, index }) {
-    const verdict = await this._evaluateContext(context, { path, index })
+  async _simulateContext (context, { path, index, address }) {
+    const verdict = await this._evaluateContext(context, { path, index, address })
 
     return {
       decision: verdict.outcome === 'BLOCK' ? 'DENY' : 'ALLOW',

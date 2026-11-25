@@ -1,6 +1,8 @@
 export { DEFAULT_POLICY_EXCLUSIONS, DENIAL_CODES } from "./constants.js";
 export type Policy = import("./policy-engine.js").Policy;
 export type PolicyRule = import("./policy-engine.js").PolicyRule;
+export type AccountIdentifier = import("./policy-engine.js").AccountIdentifier;
+export type AddressIdentifier = import("./policy-engine.js").AddressIdentifier;
 export type PolicyCondition = import("./policy-engine.js").PolicyCondition;
 export type PolicyContext = import("./policy-engine.js").PolicyContext;
 export type PolicyAction = import("./policy-engine.js").PolicyAction;

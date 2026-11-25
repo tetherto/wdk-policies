@@ -60,6 +60,7 @@ export default class PolicyEngine {
      * @param {Omit<WrapContext, 'engine'>} ctx - The per-account routing context. The engine reference is supplied by `this`.
      * @returns {Promise<IWalletAccount>} The enforced proxy, or the original account if no policy applies.
      * @throws {PolicyConfigurationError} If at least one policy applies but the underlying account does not implement `toReadOnlyAccount()`.
+     * @throws {Error} If the wallet has an account-scope policy that names an account by address and the account's `getAddress()` fails.
      */
     applyPoliciesTo(account: IWalletAccount, { blockchain, path, index }: Omit<WrapContext, "engine">): Promise<IWalletAccount>;
     /**
@@ -73,6 +74,8 @@ export default class PolicyEngine {
      * Removes all registered policies across every bucket.
      */
     disposeAll(): void;
+    /** @private */
+    private _needsAddress;
     /** @private */
     private _isGoverned;
     /** @private */
@@ -164,11 +167,21 @@ export type PolicyRule = {
     onSuccess?: (c: PolicyContext) => void | Promise<void>;
 };
 /**
- * Identifies an account targeted by an account-scope policy: either a derivation
- * path (string, exact match against `account.path`) or a non-negative integer
- * index (matched against the index passed to `wdk.getAccount(wallet, index)`).
+ * Identifies an account by its address, whatever signer or retrieval style it comes from.
  */
-export type AccountIdentifier = string | number;
+export type AddressIdentifier = {
+    /**
+     * - The account's address, as returned by `account.getAddress()`. Hex addresses starting with `0x` match in any letter case; other addresses must match exactly.
+     */
+    address: string;
+};
+/**
+ * Identifies an account targeted by an account-scope policy: a derivation
+ * path (string, exact match against `account.path`), a non-negative integer
+ * index (matched against the index passed to `wdk.getAccount(wallet, index)`),
+ * or an address.
+ */
+export type AccountIdentifier = string | number | AddressIdentifier;
 /**
  * A user-supplied policy: identifies itself, optionally binds to one or more
  * wallets/accounts, and carries an ordered list of rules.
@@ -191,7 +204,7 @@ export type Policy = {
      */
     wallet?: string | string[];
     /**
-     * - The accounts this policy applies to (required when scope is 'account'). Each entry is either a derivation path (exact-string match against `account.path`) or a non-negative integer (match against the index passed to `wdk.getAccount(wallet, index)`). Index entries do not match accounts retrieved via `getAccountByPath` — use derivation paths if you need both retrieval styles to work.
+     * - The accounts this policy applies to (required when scope is 'account'). Each entry is a derivation path (exact-string match against `account.path`), a non-negative integer (match against the index passed to `wdk.getAccount(wallet, index)`) or an `{ address }` (match against `account.getAddress()`). Index entries do not match accounts retrieved via `getAccountByPath` — use derivation paths if you need both retrieval styles to work. An `{ address }` entry matches the account with that address however it was retrieved, including accounts with no path or index.
      */
     accounts?: AccountIdentifier[];
     /**

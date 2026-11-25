@@ -47,7 +47,9 @@ export const policySchema: z.ZodObject<{
         [x: string]: string;
     }>;
     wallet: z.ZodOptional<z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>>;
-    accounts: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>>>;
+    accounts: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodNumber, z.ZodObject<{
+        address: z.ZodString;
+    }, z.core.$strict>]>>>;
     rules: z.ZodArray<z.ZodObject<{
         name: z.ZodString;
         reason: z.ZodOptional<z.ZodString>;
