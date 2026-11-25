@@ -49,6 +49,9 @@ const getAccountByPathMock = jest.fn()
 const disposeWalletMock = jest.fn()
 const payInheritedMock = jest.fn()
 const supplyMock = jest.fn()
+const transferAllMock = jest.fn()
+const replacedSendTransactionMock = jest.fn()
+const drainMock = jest.fn()
 
 const WalletManagerMock = jest.fn().mockImplementation(() => {
   return Object.create(WalletManager.prototype, {
@@ -140,6 +143,9 @@ describe('WDK — policy engine', () => {
     disposeWalletMock.mockReset()
     payInheritedMock.mockReset().mockResolvedValue(DUMMY_LIGHTNING_PAYMENT)
     supplyMock.mockReset().mockResolvedValue({ hash: '0xdummy-supply' })
+    transferAllMock.mockReset()
+    replacedSendTransactionMock.mockReset()
+    drainMock.mockReset()
 
     wdk = new WDK(SEED_PHRASE)
   })
@@ -770,6 +776,136 @@ describe('WDK — policy engine', () => {
 
       const result = await account.transfer({ token: TOKEN, recipient: RECIPIENT, amount: 1n })
       expect(result.hash).toBe(DUMMY_TRANSFER_HASH)
+    })
+
+    describe('methods that change on the account class after an earlier wrap', () => {
+      const classAccount = (Account) => {
+        const account = new Account()
+        account.path = PATH_DEFAULT
+        account.index = 0
+        account.toReadOnlyAccount = async () => ({ path: PATH_DEFAULT, getAddress: async () => '0xdummy-address' })
+        return account
+      }
+
+      const allowSend = {
+        id: 'allow-send',
+        name: 'allow-send',
+        scope: 'project',
+        rules: [{ name: 'allow', operation: 'sendTransaction', action: 'ALLOW', conditions: [] }]
+      }
+
+      test('governs a method added to the prototype after an earlier account was wrapped', async () => {
+        class DummyAccount {
+          async sendTransaction (tx) { return await sendTransactionMock(tx) }
+        }
+
+        getAccountMock.mockImplementation(async () => classAccount(DummyAccount))
+        wdk.registerWallet('ethereum', WalletManagerMock, {}).registerPolicy(allowSend)
+
+        await wdk.getAccount('ethereum', 0)
+
+        DummyAccount.prototype.transferAll = async function () { return await transferAllMock() }
+
+        const account = await wdk.getAccount('ethereum', 1)
+        const err = await catchAsync(() => account.transferAll())
+
+        expect(err.name).toBe('PolicyViolationError')
+        expect(err.reason).toBe('no-applicable-rule')
+        expect(transferAllMock).not.toHaveBeenCalled()
+      })
+
+      test('governs a method removed before an earlier wrap and restored afterwards', async () => {
+        class DummyAccount {
+          async sendTransaction (tx) { return await sendTransactionMock(tx) }
+          async sign (message) { return await signMock(message) }
+        }
+
+        const sign = DummyAccount.prototype.sign
+
+        getAccountMock.mockImplementation(async () => classAccount(DummyAccount))
+        wdk.registerWallet('ethereum', WalletManagerMock, {}).registerPolicy(allowSend)
+
+        delete DummyAccount.prototype.sign
+        await wdk.getAccount('ethereum', 0)
+        DummyAccount.prototype.sign = sign
+
+        const account = await wdk.getAccount('ethereum', 1)
+        const err = await catchAsync(() => account.sign('dummy-message'))
+
+        expect(err.name).toBe('PolicyViolationError')
+        expect(err.reason).toBe('no-applicable-rule')
+        expect(signMock).not.toHaveBeenCalled()
+      })
+
+      test('runs the replaced method, under the policy, after the prototype method is replaced', async () => {
+        replacedSendTransactionMock.mockResolvedValue({ hash: '0xdummy-replaced-hash' })
+
+        class DummyAccount {
+          async sendTransaction (tx) { return await sendTransactionMock(tx) }
+        }
+
+        getAccountMock.mockImplementation(async () => classAccount(DummyAccount))
+        wdk.registerWallet('ethereum', WalletManagerMock, {}).registerPolicy(allowSend)
+
+        await wdk.getAccount('ethereum', 0)
+
+        DummyAccount.prototype.sendTransaction = async function (tx) { return await replacedSendTransactionMock(tx) }
+
+        const account = await wdk.getAccount('ethereum', 1)
+        const result = await account.sendTransaction({ to: RECIPIENT, value: 1n })
+
+        expect(result).toEqual({ hash: '0xdummy-replaced-hash' })
+        expect(replacedSendTransactionMock).toHaveBeenCalledWith({ to: RECIPIENT, value: 1n })
+        expect(sendTransactionMock).not.toHaveBeenCalled()
+      })
+
+      test('keeps governing a method added to the prototype on a proxy handed out before the same account is fetched again', async () => {
+        class DummyAccount {
+          async sendTransaction (tx) { return await sendTransactionMock(tx) }
+        }
+
+        const account = classAccount(DummyAccount)
+
+        getAccountMock.mockResolvedValue(account)
+        wdk.registerWallet('ethereum', WalletManagerMock, {}).registerPolicy(allowSend)
+
+        const first = await wdk.getAccount('ethereum', 0)
+
+        DummyAccount.prototype.transferAll = async function () { return await transferAllMock() }
+
+        await wdk.getAccount('ethereum', 0)
+
+        const err = await catchAsync(() => first.transferAll())
+
+        expect(err.name).toBe('PolicyViolationError')
+        expect(err.reason).toBe('no-applicable-rule')
+        expect(transferAllMock).not.toHaveBeenCalled()
+      })
+
+      test('governs a method added to a protocol class after an earlier protocol was built', async () => {
+        class DummySwapProtocol extends SwapProtocol {
+          constructor () { super() }
+          async swap () { return DUMMY_SWAP_RESULT }
+        }
+
+        getAccountMock.mockResolvedValue(buildAccount())
+        wdk
+          .registerWallet('ethereum', WalletManagerMock, {})
+          .registerProtocol('ethereum', 'dummy', DummySwapProtocol, {})
+          .registerPolicy(allowSend)
+
+        const account = await wdk.getAccount('ethereum', 0)
+
+        account.getSwapProtocol('dummy')
+
+        DummySwapProtocol.prototype.drain = async function () { return await drainMock() }
+
+        const err = await catchAsync(() => account.getSwapProtocol('dummy').drain())
+
+        expect(err.name).toBe('PolicyViolationError')
+        expect(err.reason).toBe('no-applicable-rule')
+        expect(drainMock).not.toHaveBeenCalled()
+      })
     })
   })
 

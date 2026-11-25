@@ -46,10 +46,6 @@ const PROTOCOL_CATEGORIES = {
 
 const PROTOCOL_GETTERS = Object.keys(PROTOCOL_CATEGORIES)
 
-const EMPTY_METHODS = new Map()
-
-const governedMethodCache = new WeakMap()
-
 // One trusted-function set per raw account, shared across every proxy built for
 // it. Middleware re-runs on the cached account on each `getAccount()` and can
 // reassign methods (new identities); unioning them here keeps earlier handles
@@ -367,10 +363,9 @@ function buildEnforcedMethod (name, boundOriginal, ctx) {
  * happens to return a function is not a method, and evaluating one for
  * classification could throw or have side effects.
  *
- * Own members are collected fresh on every call and shadow inherited ones,
- * because they vary per instance — the WDK installs `registerProtocol` and the
- * protocol getters directly onto each account. Only the prototype chain is
- * cached; see {@link inheritedGovernedMethods}.
+ * The whole chain is walked on every call, with own members shadowing inherited
+ * ones, so the result matches the trusted set this wrap builds from the same chain:
+ * a method added to the prototype after an earlier wrap is governed too.
  *
  * @param {object} subject - The account or protocol whose surface is being governed.
  * @param {PolicyEngine} engine - The engine whose exclusion set decides what is skipped.
@@ -379,49 +374,8 @@ function buildEnforcedMethod (name, boundOriginal, ctx) {
 function collectGovernedMethods (subject, engine) {
   const methods = new Map()
 
-  collectCallableMembers(subject, engine, methods)
-
-  for (const [name, method] of inheritedGovernedMethods(Object.getPrototypeOf(subject), engine)) {
-    if (!methods.has(name)) methods.set(name, method)
-  }
-
-  return methods
-}
-
-/**
- * Returns the governed methods reachable from a prototype, memoised per
- * (engine, prototype) pair.
- *
- * The result is a pure function of the prototype chain and the engine's
- * exclusion set, and the exclusion set is fixed at construction — so every
- * instance of a class resolves to the same answer.
- *
- * Cached functions are unbound; the caller binds them to its own instance.
- *
- * @param {object | null} prototype - Start of the chain to walk, normally `Object.getPrototypeOf(subject)`. Null and `Object.prototype` short-circuit to an empty result.
- * @param {PolicyEngine} engine - The engine whose exclusion set decides what is skipped.
- * @returns {Map<string, Function>} The inherited governed methods. Shared — callers must not mutate it.
- */
-function inheritedGovernedMethods (prototype, engine) {
-  if (prototype === null || prototype === Object.prototype) return EMPTY_METHODS
-
-  let perPrototype = governedMethodCache.get(engine)
-
-  if (perPrototype === undefined) {
-    perPrototype = new WeakMap()
-    governedMethodCache.set(engine, perPrototype)
-  }
-
-  let methods = perPrototype.get(prototype)
-
-  if (methods === undefined) {
-    methods = new Map()
-
-    for (let o = prototype; o && o !== Object.prototype; o = Object.getPrototypeOf(o)) {
-      collectCallableMembers(o, engine, methods)
-    }
-
-    perPrototype.set(prototype, methods)
+  for (let o = subject; o && o !== Object.prototype; o = Object.getPrototypeOf(o)) {
+    collectCallableMembers(o, engine, methods)
   }
 
   return methods
