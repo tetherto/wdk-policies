@@ -32,7 +32,8 @@ export default class WdkPolicies {
     attach(wdk: WDK, ...blockchains: string[]): WdkPolicies;
     /**
      * Registers one or more policies. Calls stack; if a policy with the same id is registered twice into the same
-     * binding, the second call replaces the first.
+     * binding, the second call replaces the first. A call already being evaluated may still finish under the earlier
+     * policies; the change applies to calls that start after it.
      *
      * @param {Policy | Policy[]} policies - The policies to register.
      * @param {RegisterPolicyOptions} [options] - Settings applied to the policies this call registers.
@@ -48,7 +49,8 @@ export default class WdkPolicies {
      */
     getExclusions(): readonly string[];
     /**
-     * Forgets the policies bound to the given wallets, or every policy if none are given.
+     * Forgets the policies bound to the given wallets, or every policy if none are given. A call already being
+     * evaluated may still finish under the forgotten policies.
      *
      * @param {string[]} [blockchains] - The wallet identifiers to forget.
      */

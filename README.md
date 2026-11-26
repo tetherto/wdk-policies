@@ -96,6 +96,10 @@ const governed = await wdk.getAccount('ethereum', 0)
 await governed.sign('message') // throws PolicyViolationError
 ```
 
+### Policy changes and calls in progress
+
+A policy change (`register`, including a re-registration that replaces a policy, or `dispose`) applies to every governed call that starts after it. A call already being evaluated, for example one waiting on an async condition, may still finish under the earlier policies and reach the wallet. Keep conditions fast to keep that window short. `conditionTimeoutMs` limits how long the engine waits on each condition, not the whole evaluation, and cannot interrupt synchronous work: conditions run one after another, so the window can last several timeouts.
+
 ### Condition context
 
 Every condition receives a single frozen context object with four fields: `operation` (the intercepted operation name), `wallet` (the identifier the account belongs to — the same string passed to `registerWallet`), `account` (a read-only view exposing reads and quotes but no signing or write methods), and `args` (the full argument array the call was made with, snapshotted at evaluation time).
